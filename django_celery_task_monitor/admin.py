@@ -176,6 +176,73 @@ class CeleryTaskMonitorMixin(_AdminBase):
             .first()
         )
 
+    def create_task_log(
+        self, request: HttpRequest, obj, task_id: str, task_name: str = ""
+    ) -> TaskLog:
+        """Registra um :class:`TaskLog` para uma tarefa já disparada.
+
+        Uso de baixo nível — para o caso comum (disparar a tarefa e
+        registrar em seguida), prefira :meth:`start_task`. Use este método
+        diretamente quando a tarefa já foi disparada de outro jeito (ex.:
+        ``apply_async()`` com opções customizadas, ou uma chamada em outro
+        lugar do código que só te devolveu o ``task_id``).
+
+        Funciona a partir de qualquer lugar do ``ModelAdmin`` — não depende
+        de nenhum hook específico do Django admin (serve para
+        ``response_change``, para uma ``action`` de changelist chamada uma
+        vez por objeto do queryset, ou para uma view customizada).
+        """
+        return TaskLog.objects.create(
+            content_type=ContentType.objects.get_for_model(type(obj)),
+            object_id=str(obj.pk),
+            task_id=task_id,
+            task_name=task_name,
+            started_by=getattr(request, "user", None),
+        )
+
+    def start_task(
+        self,
+        request: HttpRequest,
+        obj,
+        task,
+        *args,
+        task_name: Optional[str] = None,
+        **kwargs,
+    ) -> TaskLog:
+        """Dispara ``task.delay(*args, **kwargs)`` e já registra o ``TaskLog``.
+
+        Substitui o boilerplate repetido em toda ``ModelAdmin`` que dispara
+        tarefas Celery::
+
+            task = minha_task.delay(obj.id)
+            TaskLog.objects.create(
+                content_type=ContentType.objects.get_for_model(obj),
+                object_id=obj.id,
+                task_id=task.id,
+                task_name="minha_task",
+                started_by=request.user,
+            )
+
+        vira::
+
+            self.start_task(request, obj, minha_task, obj.id)
+
+        ``task_name`` é derivado automaticamente de ``task.name`` (todo
+        ``@shared_task``/``@app.task`` tem esse atributo) — só passe
+        ``task_name=`` explicitamente para sobrescrever. Funciona igual em
+        ``response_change``, em uma ``action`` de changelist (uma chamada
+        por objeto do queryset) ou em qualquer outro lugar do
+        ``ModelAdmin``, sem exigir nenhum hook específico do admin. Retorna
+        o :class:`TaskLog` recém-criado (já com ``task_id`` preenchido).
+        """
+        async_result = task.delay(*args, **kwargs)
+        return self.create_task_log(
+            request,
+            obj,
+            async_result.id,
+            task_name=task_name or getattr(task, "name", "") or "",
+        )
+
     def _render_task_status(self, obj) -> str:
         task_log = self._latest_task_log(obj)
         if task_log is None:

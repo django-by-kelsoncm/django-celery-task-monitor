@@ -2,6 +2,38 @@
 Uso Avançado
 ==============
 
+Disparando tarefas em outros lugares (actions, etc.)
+========================================================
+
+``start_task()``/``create_task_log()`` não são exclusivos de
+``response_change`` — funcionam em qualquer lugar do ``ModelAdmin``,
+inclusive numa ``action`` de changelist (uma tarefa por objeto
+selecionado):
+
+.. code-block:: python
+
+   class MeuModeloAdmin(CeleryTaskMonitorMixin, admin.ModelAdmin):
+       actions = ["processar_selecionados_async"]
+
+       @admin.action(description="Processar selecionados (assíncrono)")
+       def processar_selecionados_async(self, request, queryset):
+           for obj in queryset:
+               self.start_task(request, obj, minha_task, obj.id)
+           self.message_user(request, f"{queryset.count()} tarefa(s) iniciada(s)!")
+
+Se a tarefa já foi disparada de outro jeito (``apply_async()`` com opções
+customizadas, por exemplo) e você só tem o ``task_id`` em mãos, use
+``create_task_log()`` diretamente — é o que ``start_task()`` usa por baixo:
+
+.. code-block:: python
+
+   result = minha_task.apply_async((obj.id,), countdown=60)
+   self.create_task_log(request, obj, result.id, task_name="minha_task")
+
+``task_name`` é opcional em ``start_task()`` — é derivado automaticamente de
+``task.name`` (todo ``@shared_task``/``@app.task`` tem esse atributo); passe
+``task_name=`` explicitamente só para sobrescrever.
+
 Intervalo de polling por ``ModelAdmin``
 ==========================================
 

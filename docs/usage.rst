@@ -3,8 +3,9 @@ Uso Básico
 ============
 
 O padrão de uso é: seu ``ModelAdmin`` herda de ``CeleryTaskMonitorMixin``,
-adiciona ``task_status_column`` ao ``list_display``, e cria um ``TaskLog``
-sempre que disparar uma tarefa a partir do admin.
+adiciona ``task_status_column`` ao ``list_display``, e usa
+``self.start_task(...)`` sempre que disparar uma tarefa a partir do admin —
+o mixin já cuida de criar o ``TaskLog`` correspondente.
 
 Exemplo mínimo
 ================
@@ -12,11 +13,9 @@ Exemplo mínimo
 .. code-block:: python
 
    from django.contrib import admin
-   from django.contrib.contenttypes.models import ContentType
    from django.http import HttpResponseRedirect
 
    from django_celery_task_monitor.admin import CeleryTaskMonitorMixin
-   from django_celery_task_monitor.models import TaskLog
 
    from .models import MeuModelo
    from .tasks import minha_task
@@ -28,16 +27,10 @@ Exemplo mínimo
 
        def response_change(self, request, obj):
            if "_processar-async" in request.POST:
-               task = minha_task.delay(obj.id)
-
-               TaskLog.objects.create(
-                   content_type=ContentType.objects.get_for_model(obj),
-                   object_id=obj.id,
-                   task_id=task.id,
-                   task_name="minha_task",
-                   started_by=request.user,
-               )
-
+               # start_task() dispara minha_task.delay(obj.id) e já registra
+               # o TaskLog correspondente — sem montar ContentType, object_id,
+               # task_id etc. na mão.
+               self.start_task(request, obj, minha_task, obj.id)
                self.message_user(request, "Task iniciada!")
                return HttpResponseRedirect(request.path)
 

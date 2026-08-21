@@ -3,8 +3,18 @@
 from __future__ import annotations
 
 import pytest
+from celery import current_app
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+
+# example_app.tasks usa @shared_task, que se vincula à app Celery "atual"
+# (current_app) quando nenhuma app dedicada foi criada — diferente de um
+# projeto Django real, onde example_project/celery.py faz
+# `app.config_from_object("django.conf:settings", namespace="CELERY")` na
+# inicialização. Sem este passo aqui, os CELERY_* de tests/settings.py
+# (CELERY_TASK_ALWAYS_EAGER, CELERY_BROKER_URL, ...) nunca chegam à app de
+# verdade, e qualquer `.delay()` tenta abrir uma conexão AMQP de verdade.
+current_app.config_from_object("django.conf:settings", namespace="CELERY")
 
 
 @pytest.fixture

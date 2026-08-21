@@ -89,11 +89,9 @@ CELERY_TASK_TRACK_STARTED = True
 
 ```python
 from django.contrib import admin
-from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponseRedirect
 
 from django_celery_task_monitor.admin import CeleryTaskMonitorMixin
-from django_celery_task_monitor.models import TaskLog
 
 from .models import MeuModelo
 from .tasks import minha_task
@@ -105,16 +103,10 @@ class MeuModeloAdmin(CeleryTaskMonitorMixin, admin.ModelAdmin):
 
     def response_change(self, request, obj):
         if "_processar-async" in request.POST:
-            task = minha_task.delay(obj.id)
-
-            TaskLog.objects.create(
-                content_type=ContentType.objects.get_for_model(obj),
-                object_id=obj.id,
-                task_id=task.id,
-                task_name="minha_task",
-                started_by=request.user,
-            )
-
+            # start_task() dispara minha_task.delay(obj.id) e já registra o
+            # TaskLog correspondente — sem precisar montar ContentType,
+            # object_id, task_id etc. na mão.
+            self.start_task(request, obj, minha_task, obj.id)
             self.message_user(request, "Task iniciada!")
             return HttpResponseRedirect(request.path)
 
@@ -148,6 +140,35 @@ já injeta esse HTML pronto no contexto:
 ```
 
 ## Uso avançado
+
+### Disparando tarefas em outros lugares (actions, etc.)
+
+`start_task()`/`create_task_log()` não são exclusivos de `response_change` —
+funcionam em qualquer lugar do `ModelAdmin`, inclusive numa `action` de
+changelist (uma tarefa por objeto selecionado):
+
+```python
+class MeuModeloAdmin(CeleryTaskMonitorMixin, admin.ModelAdmin):
+    actions = ["processar_selecionados_async"]
+
+    @admin.action(description="Processar selecionados (assíncrono)")
+    def processar_selecionados_async(self, request, queryset):
+        for obj in queryset:
+            self.start_task(request, obj, minha_task, obj.id)
+        self.message_user(request, f"{queryset.count()} tarefa(s) iniciada(s)!")
+```
+
+Se a tarefa já foi disparada de outro jeito (`apply_async()` com opções
+customizadas, por exemplo) e você só tem o `task_id` em mãos, use
+`create_task_log()` diretamente — é o que `start_task()` usa por baixo:
+
+```python
+result = minha_task.apply_async((obj.id,), countdown=60)
+self.create_task_log(request, obj, result.id, task_name="minha_task")
+```
+
+`task_name` é opcional em `start_task()` — é derivado automaticamente de
+`task.name` (todo `@shared_task`/`@app.task` tem esse atributo).
 
 ### Customizar o intervalo de polling por ModelAdmin
 
@@ -258,6 +279,8 @@ ou por chamada via `options.messages` — veja `docs/javascript.rst`.
 | `get_celery_poll_interval()` | Intervalo efetivo (considerando o default global). |
 | `get_urls()` | Registra a rota REST de polling (`admin:<app>_<model>_celery_task_status`). |
 | `render_change_form(...)` | Injeta `task_log_panel_html` (painel ao vivo pronto) no contexto do change form. |
+| `start_task(request, obj, task, *args, task_name=None, **kwargs)` | Dispara `task.delay(*args, **kwargs)` e já registra o `TaskLog`. Funciona em `response_change`, `actions` de changelist, ou qualquer lugar do `ModelAdmin`. |
+| `create_task_log(request, obj, task_id, task_name="")` | Registra o `TaskLog` de uma tarefa já disparada de outro jeito (`apply_async()`, etc.). É o que `start_task()` usa por baixo. |
 
 ### `django_celery_task_monitor.admin.TaskLogAdmin`
 

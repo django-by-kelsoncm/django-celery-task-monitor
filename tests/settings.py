@@ -59,7 +59,12 @@ ROOT_URLCONF = "tests.urls"
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# "memory://" evita que .delay() em modo eager tente resolver um broker de
+# verdade (o default do Celery é amqp://localhost, que falha com
+# ConnectionError se nada estiver escutando).
+CELERY_BROKER_URL = "memory://"
 CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_STORE_EAGER_RESULT = True
 CELERY_RESULT_BACKEND = "django-db"
 
 CELERY_TASK_MONITOR_POLL_INTERVAL = 4000
