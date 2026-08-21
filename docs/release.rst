@@ -23,19 +23,25 @@ Checklist de release
    pip não roda ``compilemessages``, então o ``.mo`` versionado é o que
    efetivamente é publicado.
 4. Atualize o changelog (se/quando o projeto adotar um ``CHANGELOG.md``).
-5. Gere a distribuição:
+5. Confira localmente antes de publicar de verdade (o CI não builda o
+   pacote, só testa/lint):
 
    .. code-block:: bash
 
       python -m build
+      twine check dist/*
 
-6. Publique no PyPI:
+6. Dê push no ``main`` e crie uma *release* no GitHub (com uma tag
+   ``vX.Y.Z``) apontando para o commit da nova versão. O workflow
+   ``.github/workflows/publish.yml`` dispara automaticamente no evento
+   ``release: published``: builda o pacote, roda ``twine check`` e publica
+   no PyPI via *Trusted Publisher* (OIDC) — sem token armazenado no GitHub.
 
-   .. code-block:: bash
-
-      twine upload dist/*
-
-7. Crie uma tag Git (``vX.Y.Z``) e uma release no GitHub apontando para ela.
+   Pré-requisito (uma vez só, feito no site do PyPI, não pelo CI):
+   registrar este repositório como *trusted publisher* do projeto
+   ``django-celery-task-monitor`` em
+   `pypi.org → seu projeto → Publishing <https://pypi.org/manage/account/publishing/>`_,
+   apontando para o workflow ``publish.yml`` deste repositório.
 
 Compatibilidade
 ==================
