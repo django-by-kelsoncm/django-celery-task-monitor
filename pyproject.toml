@@ -41,6 +41,7 @@ dev = [
     "django-stubs>=4.2",
     "build>=1.0",
     "twine>=5.0",
+    "pre-commit>=3.7",
 ]
 docs = ["sphinx>=7.2", "django_docs_theme>=0.1.0"]
 
@@ -80,3 +81,7 @@ django_settings_module = "tests.settings"
 DJANGO_SETTINGS_MODULE = "tests.settings"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
+# Sem isso, `pytest` (o script) não coloca a raiz do repo no sys.path (ao
+# contrário de `python -m pytest`, que insere o cwd automaticamente), e
+# `import tests.settings` falha com "No module named 'tests'".
+pythonpath = ["."]

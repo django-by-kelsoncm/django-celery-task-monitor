@@ -14,9 +14,16 @@ pip install -e ".[dev]"
 ```
 
 Isso instala o plugin em modo editável junto com Django, Celery,
-`django-celery-results`, `pytest`, `black`, `flake8`, `mypy` e demais
-ferramentas de desenvolvimento (ver `[project.optional-dependencies].dev` em
-`pyproject.toml`).
+`django-celery-results`, `pytest`, `black`, `flake8`, `mypy`, `pre-commit` e
+demais ferramentas de desenvolvimento (ver
+`[project.optional-dependencies].dev` em `pyproject.toml`).
+
+Ative os hooks de `pre-commit` (uma vez, por clone):
+
+```bash
+pre-commit install
+pre-commit install --hook-type pre-push
+```
 
 ## Rodando os testes
 
@@ -42,6 +49,20 @@ O exemplo roda com `CELERY_TASK_ALWAYS_EAGER = True` e
 `CELERY_TASK_STORE_EAGER_RESULT = True`, então tarefas rodam de forma
 síncrona e ainda assim persistem `TaskResult`, sem precisar de worker/broker
 de verdade.
+
+## pre-commit
+
+O projeto usa hooks de `pre-commit` (config em `.pre-commit-config.yaml`):
+
+- **pre-commit** (roda a cada `git commit`): espaço em branco à direita,
+  fixador de fim de arquivo, verificação de YAML, arquivos grandes
+  acidentais, conflitos de merge não resolvidos, `black` e `flake8`.
+- **pre-push** (roda a cada `git push`, mais lento): `mypy` e `pytest`.
+
+Os hooks locais (`mypy`/`pytest`) usam `language: system` — ou seja, rodam
+com o Python/venv já ativo no seu shell, não um ambiente isolado do
+`pre-commit`. Rode `pre-commit run --all-files` (ou
+`--hook-stage pre-push`) para testar os hooks manualmente sem commitar/dar push.
 
 ## Padrões de código
 

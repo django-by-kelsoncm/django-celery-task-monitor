@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        stages: [pre-push]
+        language: system
+        entry: mypy django_celery_task_monitor
+        pass_filenames: false
+        always_run: true
+      - id: pytest
+        name: pytest
+        stages: [pre-push]
+        language: system
+        entry: pytest
+        pass_filenames: false
+        always_run: true

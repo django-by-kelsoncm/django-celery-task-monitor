@@ -10,11 +10,11 @@ sys.path.insert(0, os.path.abspath(".."))
 # Reaproveita as settings de teste do próprio projeto, já preparadas para
 # rodar sem infraestrutura externa.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.settings")
-import django
+import django  # noqa: E402
 
 django.setup()
 
-import django_docs_theme
+import django_docs_theme  # noqa: E402
 
 project = "django-celery-task-monitor"
 copyright = "2026, Kelson C. Medeiros"
@@ -45,10 +45,12 @@ html_theme_options = {
     "doc_path": "docs/",
     "show_edit_on_github": True,
     "navigation_links": (
-        "Início|index.html, Instalação|installation.html, Configuração|configuration.html, "
-        "Uso Básico|usage.html, Uso Avançado|advanced.html, Referência da API|api-reference.html, "
-        "JavaScript|javascript.html, Permissões|permissions.html, Projeto de Exemplo|example-project.html, "
-        "FAQ|faq.html, Desenvolvimento|development.html, Release|release.html, "
+        "Início|index.html, Instalação|installation.html, "
+        "Configuração|configuration.html, Uso Básico|usage.html, "
+        "Uso Avançado|advanced.html, Referência da API|api-reference.html, "
+        "JavaScript|javascript.html, Permissões|permissions.html, "
+        "Projeto de Exemplo|example-project.html, FAQ|faq.html, "
+        "Desenvolvimento|development.html, Release|release.html, "
         "GitHub|https://github.com/django-by-kelsoncm/django-celery-task-monitor"
     ),
 }

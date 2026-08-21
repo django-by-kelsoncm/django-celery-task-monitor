@@ -1,5 +1,9 @@
 # django-celery-task-monitor
 
+[![CI](https://github.com/django-by-kelsoncm/django-celery-task-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/django-by-kelsoncm/django-celery-task-monitor/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+
 Monitoramento de tarefas Celery no Django Admin, com polling via REST.
 
 Vincule qualquer tarefa Celery disparada a partir do admin a qualquer modelo
@@ -372,11 +376,16 @@ atinge um status final (`SUCCESS`, `FAILURE` ou `REVOKED`) — veja
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+pre-commit install
+pre-commit install --hook-type pre-push
 pytest
 black django_celery_task_monitor tests example
 flake8
 mypy django_celery_task_monitor
 ```
+
+Os hooks de `pre-commit` (`.pre-commit-config.yaml`) rodam automaticamente:
+`black`/`flake8` a cada commit; `mypy`/`pytest` a cada push.
 
 Veja [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.
 
