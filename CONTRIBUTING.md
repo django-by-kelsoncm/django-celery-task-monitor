@@ -36,6 +36,14 @@ A suíte usa `pytest-django` com `tests/settings.py`, reaproveitando o app
 `TaskLog` — não crie um segundo modelo de teste, adicione aos testes já
 existentes em `tests/`.
 
+**Cobertura de código é 100% obrigatória** (`[tool.coverage.report]` em
+`pyproject.toml`, `fail_under = 100`) — `pytest` já roda com `--cov`
+embutido via `addopts`, então basta rodar `pytest` normalmente e olhar a
+coluna `Missing` se algo não bater. Migrations são excluídas
+(`[tool.coverage.run].omit`); todo o resto do pacote precisa de teste
+cobrindo cada linha, incluindo os ramos de erro/edge case (não só o
+caminho feliz).
+
 ## Rodando o projeto de exemplo
 
 ```bash

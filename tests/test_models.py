@@ -6,7 +6,16 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from django_celery_task_monitor.models import FAILURE, PENDING, PROGRESS, STARTED, SUCCESS, TaskLog
+from django_celery_task_monitor.models import (
+    FAILURE,
+    PENDING,
+    PROGRESS,
+    REVOKED,
+    STARTED,
+    SUCCESS,
+    TaskLog,
+    _format_duration,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -149,3 +158,35 @@ def test_get_status_message_reflects_lifecycle(make_task_log, relatorio):
 
     failed = make_task_log(task_id="task-failed", status=FAILURE, traceback="boom")
     assert failed.get_status_message() == "Tarefa finalizada com erro."
+
+
+def test_get_status_message_for_revoked_task(make_task_log):
+    revoked = make_task_log(task_id="task-revoked")
+    revoked.status = REVOKED
+    revoked.save(update_fields=["status"])
+
+    assert revoked.get_status_message() == "Tarefa cancelada."
+
+
+def test_get_progress_returns_none_when_content_type_is_not_json(make_task_log):
+    task_log = make_task_log(
+        task_id="task-progress-textplain",
+        status=PROGRESS,
+        result="percent: 50",
+        content_type="text/plain",
+    )
+
+    assert task_log.get_progress() is None
+
+
+@pytest.mark.parametrize(
+    ("total_seconds", "expected"),
+    [
+        (0, "0s"),
+        (45, "45s"),
+        (65, "1min 5s"),
+        (3725, "1h 2min 5s"),
+    ],
+)
+def test_format_duration(total_seconds, expected):
+    assert _format_duration(total_seconds) == expected

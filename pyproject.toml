@@ -35,6 +35,7 @@ dev = [
     "celery>=5.3",
     "pytest>=7.4",
     "pytest-django>=4.7",
+    "pytest-cov>=4.1",
     "black>=24.0",
     "flake8>=7.0",
     "mypy>=1.8",
@@ -85,3 +86,18 @@ testpaths = ["tests"]
 # contrário de `python -m pytest`, que insere o cwd automaticamente), e
 # `import tests.settings` falha com "No module named 'tests'".
 pythonpath = ["."]
+# Cobertura embutida em qualquer `pytest` (não só no CI): o limite de 100%
+# vem de [tool.coverage.report].fail_under, que o pytest-cov já respeita
+# mesmo sem passar --cov-fail-under explicitamente.
+addopts = "--cov=django_celery_task_monitor --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["django_celery_task_monitor"]
+omit = ["*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+]

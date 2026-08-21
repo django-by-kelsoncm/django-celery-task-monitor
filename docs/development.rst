@@ -25,6 +25,13 @@ A suíte usa ``pytest-django`` com ``tests/settings.py``, que reaproveita o
 app ``example_app`` (pasta ``example/``) como modelo alvo do
 ``GenericForeignKey`` de ``TaskLog`` — ver :doc:`example-project`.
 
+**Cobertura de código é 100% obrigatória** (``[tool.coverage.report]`` em
+``pyproject.toml``, ``fail_under = 100``) — ``pytest`` já roda com
+``--cov`` embutido via ``addopts``, então basta rodar ``pytest``
+normalmente e olhar a coluna ``Missing`` se algo não bater. Migrations são
+excluídas (``[tool.coverage.run].omit``); todo o resto do pacote precisa de
+teste cobrindo cada linha, incluindo os ramos de erro/edge case.
+
 Qualidade de código
 ======================
 

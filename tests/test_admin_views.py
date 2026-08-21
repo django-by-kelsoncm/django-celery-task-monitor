@@ -1,6 +1,8 @@
 """Testes do endpoint REST de polling exposto por ``CeleryTaskMonitorMixin``."""
 
 import pytest
+from django.contrib import admin
+from django.contrib.admin.sites import AdminSite, site
 from django.contrib.auth.models import Permission
 from django.urls import reverse
 
@@ -181,3 +183,74 @@ def test_tasklog_admin_shows_traceback_to_permitted_user(
 
     assert response.status_code == 200
     assert b"secret trace" in response.content
+
+
+def test_tasklog_changelist_renders_status_badge(client, django_user_model, make_task_log):
+    superuser = django_user_model.objects.create_superuser(
+        username="root-tasklog-cl",
+        password="senha-123",
+        email="root-tasklog-cl@example.com",  # noqa: S106
+    )
+    make_task_log(task_id="poll-cl", status="SUCCESS", result='"ok"')
+    client.force_login(superuser)
+
+    url = reverse("admin:django_celery_task_monitor_tasklog_changelist")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert b"task-status-badge" in response.content
+
+
+def test_tasklog_admin_shows_dash_for_non_failure_message_and_traceback(
+    client, django_user_model, make_task_log
+):
+    """``friendly_message``/``full_traceback`` mostram "—" fora do estado FAILURE."""
+    superuser = django_user_model.objects.create_superuser(
+        username="root-nonfail",
+        password="senha-123",
+        email="root-nonfail@example.com",  # noqa: S106
+    )
+    task_log = make_task_log(task_id="poll-nonfail", status="SUCCESS", result='"ok"')
+    client.force_login(superuser)
+
+    url = reverse("admin:django_celery_task_monitor_tasklog_change", args=[task_log.pk])
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert task_log.status != "FAILURE"
+    assert "—".encode() in response.content
+
+
+def test_celery_task_field_custom_name_creates_renderer(relatorio):
+    from django_celery_task_monitor.admin import CeleryTaskMonitorMixin
+
+    class CustomFieldAdmin(CeleryTaskMonitorMixin, admin.ModelAdmin):
+        celery_task_field = "status_customizado"
+
+    admin_instance = CustomFieldAdmin(type(relatorio), AdminSite())
+
+    assert hasattr(admin_instance, "status_customizado")
+    renderer = admin_instance.status_customizado
+    assert renderer.short_description == "Status da Tarefa"
+    assert renderer(relatorio) == "—"
+
+
+def test_task_status_column_shows_dash_when_object_has_no_task_log(relatorio):
+    admin_instance = site._registry[type(relatorio)]
+
+    assert admin_instance.task_status_column(relatorio) == "—"
+
+
+def test_change_view_has_no_panel_when_object_has_no_task_log(client, django_user_model, relatorio):
+    superuser = django_user_model.objects.create_superuser(
+        username="root-no-task",
+        password="senha-123",
+        email="root-no-task@example.com",  # noqa: S106
+    )
+    client.force_login(superuser)
+
+    url = reverse("admin:example_app_relatorio_change", args=[relatorio.pk])
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert b"task-status-panel" not in response.content
