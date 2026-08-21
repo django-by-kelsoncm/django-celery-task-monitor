@@ -65,6 +65,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Fila de mensagens do broker "filesystem://" do sandbox/ (ver settings.py
+# de sandbox/django52 e sandbox/django61).
+broker_queue/
+
 # Flask stuff:
 instance/
 .webassets-cache

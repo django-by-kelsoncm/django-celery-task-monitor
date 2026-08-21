@@ -2,29 +2,30 @@
 
 ``bind=True`` dá acesso a ``self.update_state()``, usado aqui para publicar
 progresso percentual (lido por ``TaskLog.get_progress()``/o painel ao vivo
-do change form). Em modo eager (``CELERY_TASK_ALWAYS_EAGER = True``, o
-padrão do sandbox) a tarefa roda de forma síncrona dentro da própria
-requisição HTTP que a disparou, então o navegador só chega a fazer polling
-DEPOIS que ela já terminou — ou seja, os estados intermediários
-("em processamento", "42%") não são visíveis, mesmo estando corretamente
-implementados aqui. Para ver a progressão completa ao vivo, use um broker de
-verdade (Redis) e um worker Celery rodando à parte (veja ``sandbox/README.md``).
+do change form). O sandbox roda com um broker real (``filesystem://``, ver
+``config/settings.py``) e precisa de um worker Celery rodando à parte para
+processar a fila — sem isso, a task fica só enfileirada e nunca executa
+(veja ``sandbox/README.md``). ``STEP_SECONDS`` é deliberadamente alto (mais
+que o ``celery_poll_interval`` da ``ModelAdmin``) para dar tempo de ver o
+painel evoluir por pelo menos 2-3 polls antes de terminar.
 """
 
 import time
 
 from celery import shared_task
 
+STEP_SECONDS = 2
+TOTAL_STEPS = 5
+
 
 @shared_task(name="sandbox_app.processar_item", bind=True)
 def processar_item(self, item_id: int) -> str:
-    """Simula um processamento demorado, publicando progresso, e marca o item."""
+    """Simula um processamento demorado (~10s), publicando progresso, e marca o item."""
     from .models import SandboxItem
 
-    total_steps = 4
-    for step in range(1, total_steps + 1):
-        time.sleep(0.5)
-        self.update_state(state="PROGRESS", meta={"percent": round(step / total_steps * 100)})
+    for step in range(1, TOTAL_STEPS + 1):
+        time.sleep(STEP_SECONDS)
+        self.update_state(state="PROGRESS", meta={"percent": round(step / TOTAL_STEPS * 100)})
 
     item = SandboxItem.objects.get(pk=item_id)
     item.processado = True

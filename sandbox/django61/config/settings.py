@@ -89,20 +89,43 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Celery -------------------------------------------------------------
-# "memory://" não exige Redis/RabbitMQ instalado. CELERY_TASK_STORE_EAGER_RESULT
-# é essencial: sem ela, tarefas eager não persistem o TaskResult e o polling
-# do django_celery_task_monitor nunca sairia de PENDING.
-CELERY_BROKER_URL = "memory://"
+# Broker "filesystem://": fila real baseada em arquivos em disco, sem exigir
+# Redis/RabbitMQ instalado. Ao contrário de CELERY_TASK_ALWAYS_EAGER (que
+# roda a task de forma síncrona, bloqueando a própria requisição que a
+# disparou), isso permite testar o ciclo completo de verdade — um worker
+# separado processa a fila em background, então o polling do plugin chega a
+# ver os estados intermediários (enfileirada → em processamento → %  →
+# concluída). Rode o worker em outro terminal:
+#
+#   cd sandbox/django61 && source .venv/bin/activate
+#   celery -A config worker --loglevel=info --pool=solo
+#
+# (--pool=solo evita a complexidade de multiprocessing, ideal para sandbox
+# local de um único worker.)
+#
+# data_folder_in/data_folder_out precisam apontar para o MESMO diretório
+# aqui: o transporte filesystem do Kombu é assimétrico por design (quem
+# publica escreve em data_folder_out, quem consome lê de data_folder_in —
+# pensado para produtor/consumidor com configs "trocadas" entre si), mas
+# como o processo web (produtor) e o `celery worker` (consumidor) leem
+# esse MESMO settings.py, só funciona se as duas chaves coincidirem.
+_BROKER_DIR = BASE_DIR / "broker_queue"
+(_BROKER_DIR / "queue").mkdir(parents=True, exist_ok=True)
+(_BROKER_DIR / "processed").mkdir(parents=True, exist_ok=True)
+(_BROKER_DIR / "control").mkdir(parents=True, exist_ok=True)
+
+CELERY_BROKER_URL = "filesystem://"
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "data_folder_in": str(_BROKER_DIR / "queue"),
+    "data_folder_out": str(_BROKER_DIR / "queue"),
+    "data_folder_processed": str(_BROKER_DIR / "processed"),
+    "control_folder": str(_BROKER_DIR / "control"),
+}
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "django-cache"
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = False
-CELERY_TASK_STORE_EAGER_RESULT = True
 # Sem isso, o Celery nunca registra STARTED/date_started, e o painel ao
-# vivo do plugin ficaria preso em "Tarefa enfileirada.". Em modo eager a
-# tarefa roda de forma síncrona na própria requisição, então mesmo assim os
-# estados intermediários não são visíveis (veja sandbox/README.md para
-# rodar com um broker/worker de verdade e ver a progressão completa).
+# vivo do plugin ficaria preso em "Tarefa enfileirada." mesmo com a tarefa
+# já em execução.
 CELERY_TASK_TRACK_STARTED = True
 
 # --- django_celery_task_monitor ------------------------------------------

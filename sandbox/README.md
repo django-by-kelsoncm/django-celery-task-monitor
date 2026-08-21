@@ -26,7 +26,27 @@ suportada). `sandbox/` é para você comparar comportamento entre versões
 lado a lado ao investigar um bug ou validar compatibilidade antes de uma
 release — os dois podem conviver.
 
+Cada projeto roda de forma **assíncrona de verdade**: um broker real
+(`filesystem://`, do Kombu — fila baseada em arquivos, sem exigir Redis
+instalado) e um worker Celery separado do processo web. É isso que permite
+ver o ciclo completo ao vivo ("Tarefa enfileirada." → "Tarefa em
+processamento há Xs." → "Processamento em Y%." → "Tarefa finalizada com
+sucesso.") em vez de só o resultado final — em modo eager (o padrão de
+`example/`, o exemplo "oficial" do README) a tarefa roda de forma síncrona
+*dentro da própria requisição* que a disparou, e por mais que se aumente um
+`time.sleep()` dentro dela, o navegador só recebe a resposta depois que ela
+já terminou, então os estados intermediários nunca chegam a ser vistos via
+polling.
+
+Cada projeto precisa de **dois processos rodando ao mesmo tempo**: o
+`runserver` (web) e um `celery worker` (processa a fila). `sandbox_app/tasks.py`
+demora de propósito uns 10s (5 passos de 2s, publicando progresso a cada
+passo) para dar tempo de ver o painel evoluir por vários polls antes de
+terminar.
+
 ## Rodando o Django 5.2
+
+Terminal 1 (web):
 
 ```bash
 cd sandbox/django52
@@ -37,9 +57,16 @@ python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:8052
 ```
 
+Terminal 2 (worker, mesmo venv):
+
+```bash
+cd sandbox/django52 && source .venv/bin/activate
+celery -A config worker --loglevel=info --pool=solo
+```
+
 ## Rodando o Django 6.1
 
-Em outro terminal (venv separado, não misture com o do 5.2):
+Terminal 3 (web, venv separado — não misture com o do 5.2):
 
 ```bash
 cd sandbox/django61
@@ -50,46 +77,32 @@ python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:8061
 ```
 
-Com os dois rodando ao mesmo tempo (`:8052` e `:8061`), dá pra abrir os dois
-admins lado a lado e comparar o comportamento do
-`CeleryTaskMonitorMixin`/badge/polling entre as duas versões do Django.
+Terminal 4 (worker, mesmo venv):
+
+```bash
+cd sandbox/django61 && source .venv/bin/activate
+celery -A config worker --loglevel=info --pool=solo
+```
+
+Com os quatro rodando ao mesmo tempo (`:8052` e `:8061`), dá pra abrir os
+dois admins lado a lado e comparar o comportamento do
+`CeleryTaskMonitorMixin`/badge/painel/polling entre as duas versões do
+Django. `--pool=solo` evita a complexidade de multiprocessing do pool
+padrão do Celery — ideal para um worker único de sandbox local.
 
 ## O que testar
 
 1. Criar um "Item de sandbox" no admin (`/admin/sandbox_app/sandboxitem/add/`).
 2. Abrir o item e clicar em "Processar (assíncrono)".
-3. Confirmar que a coluna de status no changelist **e** o painel ao vivo no
-   próprio change form mudam de "Tarefa enfileirada." para "Tarefa
-   finalizada com sucesso." sozinhos, via polling, sem recarregar a página.
+3. Acompanhar o painel ao vivo no próprio change form (e a coluna de status
+   no changelist) evoluindo sozinho, via polling, sem recarregar a página:
+   "Tarefa enfileirada." → "Tarefa em processamento há Xs. Processamento em
+   Y%." (subindo a cada ~2s) → "Tarefa finalizada com sucesso.".
 4. Repetir a mesma sequência no outro projeto e comparar.
 
-Ambos os projetos já rodam com `CELERY_TASK_ALWAYS_EAGER = True`,
-`CELERY_TASK_STORE_EAGER_RESULT = True` e `CELERY_TASK_TRACK_STARTED = True`,
-então tarefas executam de forma síncrona e ainda assim persistem
-`TaskResult` — não é preciso worker nem broker de verdade (ver a nota
-correspondente em `docs/configuration.rst`).
-
-### Por que eu não vejo "em processamento" nem a porcentagem de progresso?
-
-Em modo eager, a tarefa roda de forma **síncrona dentro da própria
-requisição** que a disparou — ela já termina antes da página voltar ao
-navegador, então o polling nunca chega a pegá-la no meio do caminho. O
-painel salta direto de "Tarefa enfileirada." para o resultado final. Isso é
-esperado, não um bug do sandbox: `sandbox_app/tasks.py` já implementa
-`self.update_state(state="PROGRESS", meta={"percent": ...})` corretamente
-(sirva de referência), só não dá pra *ver* isso acontecer sem execução
-assíncrona de verdade. Para ver a progressão completa ao vivo:
-
-1. Instale e rode um Redis local (`redis-server`).
-2. Em `config/settings.py` do projeto que quiser testar, troque
-   `CELERY_BROKER_URL = "memory://"` por
-   `CELERY_BROKER_URL = "redis://localhost:6379/0"` e comente/remova
-   `CELERY_TASK_ALWAYS_EAGER = True`.
-3. Em outro terminal (mesmo venv), rode um worker:
-   `celery -A config worker --loglevel=info`.
-4. Dispare a task pelo admin normalmente — agora o painel deve mostrar
-   "Tarefa em processamento há Xs. Processamento em Y%." evoluindo em
-   tempo real antes do resultado final.
+Se o painel ficar preso em "Tarefa enfileirada." indefinidamente, confira se
+o `celery worker` do terminal correspondente está mesmo rodando — sem ele a
+task fica só enfileirada nos arquivos de `broker_queue/` e nunca executa.
 
 ## Alterando o plugin
 
