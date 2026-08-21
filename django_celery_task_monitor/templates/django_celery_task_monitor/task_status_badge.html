@@ -1,0 +1,9 @@
+{% load i18n %}
+<span class="task-status-badge task-status-badge--{{ status|default:"none"|lower }}"
+      {% if task_log %}data-task-id="{{ task_log.task_id }}"{% endif %}
+      {% if poll_url %}data-poll-url="{{ poll_url }}"{% endif %}
+      {% if poll_interval %}data-poll-interval="{{ poll_interval }}"{% endif %}
+      data-status="{{ status|default:"" }}">
+  <span class="task-status-badge__dot" aria-hidden="true"></span>
+  <span class="task-status-badge__label">{% if status_display %}{{ status_display }}{% else %}{% translate "Nenhuma tarefa" %}{% endif %}</span>
+</span>

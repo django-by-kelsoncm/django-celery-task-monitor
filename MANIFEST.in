@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+recursive-include django_celery_task_monitor/static *
+recursive-include django_celery_task_monitor/templates *
+recursive-include django_celery_task_monitor/locale *
+prune example
+prune docs
+prune tests

@@ -1,0 +1,97 @@
+# English (en-US) translations of django-celery-task-monitor.
+msgid ""
+msgstr ""
+"Project-Id-Version: django-celery-task-monitor 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-21 09:52-0300\n"
+"PO-Revision-Date: 2026-08-21 09:51-0300\n"
+"Last-Translator: Kelson C. Medeiros <kelsoncm@gmail.com>\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "status"
+msgstr "status"
+
+msgid "mensagem"
+msgstr "message"
+
+msgid "stacktrace completo"
+msgstr "full stacktrace"
+
+msgid "Status da Tarefa"
+msgstr "Task Status"
+
+msgid "Monitoramento de Tarefas Celery"
+msgstr "Celery Task Monitoring"
+
+msgid "Pendente"
+msgstr "Pending"
+
+msgid "Em execução"
+msgstr "Running"
+
+msgid "Repetindo"
+msgstr "Retrying"
+
+msgid "Concluída"
+msgstr "Succeeded"
+
+msgid "Falhou"
+msgstr "Failed"
+
+msgid "Revogada"
+msgstr "Revoked"
+
+msgid "tipo de conteúdo"
+msgstr "content type"
+
+msgid "ID do objeto"
+msgstr "object ID"
+
+msgid "ID da tarefa"
+msgstr "task ID"
+
+msgid "nome da tarefa"
+msgstr "task name"
+
+msgid "iniciada por"
+msgstr "started by"
+
+msgid "criada em"
+msgstr "created at"
+
+msgid "atualizada em"
+msgstr "updated at"
+
+msgid "registro de tarefa"
+msgstr "task log"
+
+msgid "registros de tarefas"
+msgstr "task logs"
+
+msgid ""
+"A tarefa falhou. Entre em contato com o administrador do sistema para mais "
+"detalhes."
+msgstr "The task failed. Contact the system administrator for more details."
+
+msgid "Tarefa"
+msgstr "Task"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Iniciada por"
+msgstr "Started by"
+
+msgid "Criada em"
+msgstr "Created at"
+
+msgid "Atualizada em"
+msgstr "Updated at"
+
+msgid "Nenhuma tarefa"
+msgstr "No task"

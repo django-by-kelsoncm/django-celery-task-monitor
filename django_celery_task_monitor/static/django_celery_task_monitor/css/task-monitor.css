@@ -1,0 +1,75 @@
+/* Estilos padrão (opcionais) para o badge de status do django-celery-task-monitor.
+   Carregue via {% task_monitor_static_css_url %} ou aponte para este arquivo
+   diretamente; sinta-se livre para sobrescrever no CSS do seu projeto. */
+
+.task-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.15em 0.6em;
+  border-radius: 1em;
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 1.6;
+  background: #e5e7eb;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.task-status-badge__dot {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.task-status-badge--pending {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.task-status-badge--started,
+.task-status-badge--retry {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.task-status-badge--started .task-status-badge__dot {
+  animation: task-status-pulse 1.2s ease-in-out infinite;
+}
+
+.task-status-badge--success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.task-status-badge--failure {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-status-badge--revoked {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.task-status-badge--none {
+  background: transparent;
+  color: #9ca3af;
+}
+
+@keyframes task-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.task-log-detail__traceback {
+  max-height: 24em;
+  overflow: auto;
+  background: #111827;
+  color: #f9fafb;
+  padding: 1em;
+  border-radius: 0.4em;
+  font-size: 0.8em;
+}

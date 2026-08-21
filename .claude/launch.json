@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "example-admin",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["example/manage.py", "runserver", "0.0.0.0:8734", "--noreload"],
+      "port": 8734
+    }
+  ]
+}

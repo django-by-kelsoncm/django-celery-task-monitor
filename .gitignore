@@ -54,6 +54,10 @@ cover/
 # Translations
 *.mo
 *.pot
+# Exceção: django_celery_task_monitor é uma app distribuída via PyPI, e
+# quem instala via pip não roda `compilemessages` — o .mo compilado
+# precisa estar versionado para as traduções funcionarem no pacote publicado.
+!django_celery_task_monitor/locale/**/*.mo
 
 # Django stuff:
 *.log

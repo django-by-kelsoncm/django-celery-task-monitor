@@ -1,0 +1,102 @@
+# Traduções pt-BR de django-celery-task-monitor.
+# O código-fonte já usa strings em português como msgid, então este arquivo
+# é essencialmente uma tradução identidade — existe para deixar explícito
+# que pt-BR é suportado e testado.
+msgid ""
+msgstr ""
+"Project-Id-Version: django-celery-task-monitor 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-21 09:52-0300\n"
+"PO-Revision-Date: 2026-08-21 09:51-0300\n"
+"Last-Translator: Kelson C. Medeiros <kelsoncm@gmail.com>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "status"
+msgstr "status"
+
+msgid "mensagem"
+msgstr "mensagem"
+
+msgid "stacktrace completo"
+msgstr "stacktrace completo"
+
+msgid "Status da Tarefa"
+msgstr "Status da Tarefa"
+
+msgid "Monitoramento de Tarefas Celery"
+msgstr "Monitoramento de Tarefas Celery"
+
+msgid "Pendente"
+msgstr "Pendente"
+
+msgid "Em execução"
+msgstr "Em execução"
+
+msgid "Repetindo"
+msgstr "Repetindo"
+
+msgid "Concluída"
+msgstr "Concluída"
+
+msgid "Falhou"
+msgstr "Falhou"
+
+msgid "Revogada"
+msgstr "Revogada"
+
+msgid "tipo de conteúdo"
+msgstr "tipo de conteúdo"
+
+msgid "ID do objeto"
+msgstr "ID do objeto"
+
+msgid "ID da tarefa"
+msgstr "ID da tarefa"
+
+msgid "nome da tarefa"
+msgstr "nome da tarefa"
+
+msgid "iniciada por"
+msgstr "iniciada por"
+
+msgid "criada em"
+msgstr "criada em"
+
+msgid "atualizada em"
+msgstr "atualizada em"
+
+msgid "registro de tarefa"
+msgstr "registro de tarefa"
+
+msgid "registros de tarefas"
+msgstr "registros de tarefas"
+
+msgid ""
+"A tarefa falhou. Entre em contato com o administrador do sistema para mais "
+"detalhes."
+msgstr ""
+"A tarefa falhou. Entre em contato com o administrador do sistema para mais "
+"detalhes."
+
+msgid "Tarefa"
+msgstr "Tarefa"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Iniciada por"
+msgstr "Iniciada por"
+
+msgid "Criada em"
+msgstr "Criada em"
+
+msgid "Atualizada em"
+msgstr "Atualizada em"
+
+msgid "Nenhuma tarefa"
+msgstr "Nenhuma tarefa"

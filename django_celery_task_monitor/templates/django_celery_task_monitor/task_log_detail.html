@@ -1,0 +1,28 @@
+{% load i18n %}
+<div class="task-log-detail">
+  <dl>
+    <dt>{% translate "Tarefa" %}</dt>
+    <dd>{{ task_log.task_name|default:task_log.task_id }}</dd>
+
+    <dt>{% translate "Status" %}</dt>
+    <dd>{% include "django_celery_task_monitor/task_status_badge.html" with status=task_log.status status_display=task_log.get_status_display %}</dd>
+
+    <dt>{% translate "Iniciada por" %}</dt>
+    <dd>{{ task_log.started_by|default:"—" }}</dd>
+
+    <dt>{% translate "Criada em" %}</dt>
+    <dd>{{ task_log.created_at }}</dd>
+
+    <dt>{% translate "Atualizada em" %}</dt>
+    <dd>{{ task_log.updated_at }}</dd>
+  </dl>
+
+  {% if error_details %}
+    <div class="task-log-detail__error">
+      <p>{{ error_details.message }}</p>
+      {% if error_details.traceback %}
+        <pre class="task-log-detail__traceback">{{ error_details.traceback }}</pre>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
