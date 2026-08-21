@@ -1,0 +1,5 @@
+# Sandbox de testes manuais do django-celery-task-monitor sob Django 6.1.
+-e ../..
+Django~=6.1.0
+celery>=5.3
+django-celery-results>=2.5
