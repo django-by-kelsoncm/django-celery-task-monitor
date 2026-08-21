@@ -98,6 +98,12 @@ CELERY_CACHE_BACKEND = "django-cache"
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = False
 CELERY_TASK_STORE_EAGER_RESULT = True
+# Sem isso, o Celery nunca registra STARTED/date_started, e o painel ao
+# vivo do plugin ficaria preso em "Tarefa enfileirada.". Em modo eager a
+# tarefa roda de forma síncrona na própria requisição, então mesmo assim os
+# estados intermediários não são visíveis (veja sandbox/README.md para
+# rodar com um broker/worker de verdade e ver a progressão completa).
+CELERY_TASK_TRACK_STARTED = True
 
 # --- django_celery_task_monitor ------------------------------------------
 CELERY_TASK_MONITOR_POLL_INTERVAL = 3000

@@ -40,7 +40,15 @@ def user_with_trace_permission(db):
 def make_task_log(db, relatorio):
     """Factory que cria um ``TaskLog`` (e opcionalmente um ``TaskResult``) para os testes."""
 
-    def _make(task_id="task-123", status="PENDING", traceback=None, result=None, **kwargs):
+    def _make(
+        task_id="task-123",
+        status="PENDING",
+        traceback=None,
+        result=None,
+        date_started=None,
+        content_type="application/json",
+        **kwargs,
+    ):
         from django_celery_task_monitor.models import TaskLog
 
         task_log = TaskLog.objects.create(
@@ -59,6 +67,9 @@ def make_task_log(db, relatorio):
                 status=status,
                 traceback=traceback,
                 result=result,
+                date_started=date_started,
+                content_type=content_type,
+                content_encoding="utf-8",
             )
         return task_log
 

@@ -1,9 +1,12 @@
 """Testes do modelo ``TaskLog``."""
 
+import json
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
-from django_celery_task_monitor.models import FAILURE, PENDING, SUCCESS, TaskLog
+from django_celery_task_monitor.models import FAILURE, PENDING, PROGRESS, STARTED, SUCCESS, TaskLog
 
 pytestmark = pytest.mark.django_db
 
@@ -92,3 +95,57 @@ def test_as_status_payload_includes_error_only_on_failure(make_task_log, relator
     payload = failed_log.as_status_payload(None)
     assert "error" in payload
     assert payload["error"]["traceback"] is None  # user=None não tem permissão
+
+
+def test_get_progress_returns_none_for_standard_states(make_task_log):
+    task_log = make_task_log(task_id="task-started", status=STARTED, result=None)
+    assert task_log.get_progress() is None
+
+
+def test_get_progress_decodes_json_meta_from_custom_state(make_task_log):
+    task_log = make_task_log(
+        task_id="task-progress", status=PROGRESS, result=json.dumps({"percent": 42})
+    )
+    assert task_log.get_progress() == {"percent": 42}
+
+
+def test_get_progress_ignores_non_dict_or_undecodable_result(make_task_log):
+    not_a_dict = make_task_log(task_id="task-progress-list", status=PROGRESS, result="[1, 2]")
+    assert not_a_dict.get_progress() is None
+
+    not_json = make_task_log(task_id="task-progress-bad", status=PROGRESS, result="not json")
+    assert not_json.get_progress() is None
+
+
+def test_as_status_payload_includes_started_at_and_progress(make_task_log):
+    started_at = timezone.now()
+    task_log = make_task_log(
+        task_id="task-running",
+        status=PROGRESS,
+        result=json.dumps({"percent": 50}),
+        date_started=started_at,
+    )
+
+    payload = task_log.as_status_payload(None)
+
+    assert payload["started_at"] == started_at.isoformat()
+    assert payload["progress"] == {"percent": 50}
+    assert "processamento" in payload["message"].lower()
+
+
+def test_get_status_message_reflects_lifecycle(make_task_log, relatorio):
+    queued = TaskLog.objects.create(
+        content_type=ContentType.objects.get_for_model(relatorio),
+        object_id=str(relatorio.pk),
+        task_id="task-queued",
+    )
+    assert queued.get_status_message() == "Tarefa enfileirada."
+
+    running = make_task_log(task_id="task-running-2", status=STARTED, date_started=timezone.now())
+    assert "processamento" in running.get_status_message().lower()
+
+    done = make_task_log(task_id="task-done", status=SUCCESS, result='"ok"')
+    assert done.get_status_message() == "Tarefa finalizada com sucesso."
+
+    failed = make_task_log(task_id="task-failed", status=FAILURE, traceback="boom")
+    assert failed.get_status_message() == "Tarefa finalizada com erro."

@@ -47,6 +47,25 @@ O contexto disponível inclui ``task_log``, ``status``, ``status_display``,
 ``poll_url`` e ``poll_interval``. Mantenha o atributo ``data-poll-url`` no
 elemento raiz — é ele que ``task-poll.js`` usa para descobrir o que sondar.
 
+Customizando o painel de status do change form
+===================================================
+
+``task_status_panel.html`` (diferente de ``task_status_badge.html``, que é
+um rótulo curto) mostra a frase completa de status. Sobrescreva do mesmo
+jeito:
+
+.. code-block:: text
+
+   seu_projeto/templates/django_celery_task_monitor/task_status_panel.html
+
+O contexto inclui ``task_log``, ``status``, ``message`` (a frase já
+composta pelo Python, usada no primeiro render antes do JavaScript
+assumir), ``poll_url`` e ``poll_interval``. Assim como o badge, mantenha
+``data-poll-url`` no elemento raiz. O elemento com a classe
+``task-status-panel__message`` é o que ``task-poll.js`` atualiza a cada
+poll (e a cada segundo, localmente, para o relógio de tempo decorrido —
+ver :doc:`javascript`).
+
 Endpoint REST fora do admin
 ==============================
 
@@ -84,10 +103,44 @@ Usando o badge fora do admin
 
 Veja a lista completa de tags em :doc:`api-reference`.
 
-Progresso além de status (barra de progresso)
-=================================================
+Progresso percentual
+========================
 
-O plugin não modela progresso percentual porque isso é específico de cada
-tarefa. A abordagem recomendada é usar ``self.update_state()`` dentro da sua
-tarefa Celery e ler o ``meta`` correspondente no ``TaskResult`` — veja a
-pergunta correspondente em :doc:`faq`.
+Dentro de uma tarefa com ``bind=True``:
+
+.. code-block:: python
+
+   @shared_task(bind=True)
+   def minha_task(self, ...):
+       for step, total in enumerate(passos, start=1):
+           ...
+           self.update_state(state="PROGRESS", meta={"percent": round(step / total * 100)})
+
+``TaskLog.get_progress()`` decodifica esse ``meta`` (guardado pelo Celery no
+campo ``result`` do ``TaskResult`` — não há campo próprio de "progresso" no
+Celery, então é assim que qualquer estado customizado transporta dados). O
+payload JSON do polling inclui ``progress`` (o dict decodificado, ou
+``None``) e ``message`` já pronta com "Processamento em X%." anexado quando
+``progress.percent`` existe. Isso funciona para o nome de estado
+``"PROGRESS"`` ou qualquer outro nome customizado — o único requisito é que
+o ``result`` codificado seja um JSON decodificável para um ``dict`` (o
+padrão do Celery, ``content_type == "application/json"``).
+
+Mensagens customizadas ("Tarefa enfileirada.", etc.)
+========================================================
+
+Os textos padrão (pt-BR) usados no painel vêm de duas fontes:
+
+- No servidor (primeiro render, antes do JS assumir, e no campo ``message``
+  do payload JSON): ``django_celery_task_monitor.models._compose_status_message``,
+  usando ``gettext`` — traduzível via o mecanismo normal de i18n do Django
+  (ver ``CONTRIBUTING.md`` para regenerar/compilar traduções).
+- No cliente (recalculado a cada segundo, para o relógio de "há X tempo"
+  andar sem round-trip ao servidor): ``DEFAULT_MESSAGES`` em
+  ``task-poll.js``, sobrescrevível por chamada via
+  ``TaskPoll.init(selector, {messages: {...}})`` ou globalmente via
+  ``TaskPoll.configure({messages: {...}})``. Ver :doc:`javascript` para a
+  lista completa de chaves.
+
+As duas fontes usam o mesmo texto pt-BR por padrão, mas são independentes —
+customizar uma não afeta a outra.

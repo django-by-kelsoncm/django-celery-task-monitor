@@ -13,18 +13,65 @@
  *   </script>
  *
  * Cada elemento casado por `selector` deve expor a URL de polling via
- * `data-poll-url="..."` (renderizado automaticamente pelo template
- * `task_status_badge.html`), ou via `options.endpoint` para usar a mesma URL
- * em todos os elementos. `data-poll-interval` no elemento sobrescreve
- * `options.pollInterval` por elemento.
+ * `data-poll-url="..."` (renderizado automaticamente pelos templates
+ * `task_status_badge.html`/`task_status_panel.html`), ou via
+ * `options.endpoint` para usar a mesma URL em todos os elementos.
+ * `data-poll-interval` no elemento sobrescreve `options.pollInterval` por
+ * elemento.
+ *
+ * Elementos com um `.task-status-panel__message` interno (renderizado por
+ * `task_status_panel.html`) recebem, além do badge curto, uma frase
+ * completa de status ("Tarefa em processamento há 12s.", "Processamento em
+ * 42%.", ...) que é recalculada a cada segundo no cliente — sem round-trip
+ * ao servidor — para o relógio de tempo decorrido andar suavemente entre um
+ * poll e outro. Customize os textos via `options.messages` (ver
+ * `DEFAULT_MESSAGES` abaixo) ou globalmente via `TaskPoll.configure({messages: {...}})`.
  */
 (function (global) {
   "use strict";
 
-  // Mapeia elemento em polling -> { intervalId }. Permite múltiplas instâncias
-  // simultâneas na mesma página sem duplicar polling no mesmo elemento.
+  // Mapeia elemento em polling -> { intervalId, tickId, lastData }. Permite
+  // múltiplas instâncias simultâneas na mesma página sem duplicar polling
+  // no mesmo elemento.
   var REGISTRY = new Map();
   var domObserver = null;
+
+  var DEFAULT_MESSAGES = {
+    none: "Nenhuma tarefa em andamento.",
+    queued: "Tarefa enfileirada.",
+    running: "Tarefa em processamento há {time}.",
+    progress: "Processamento em {percent}%.",
+    success: "Tarefa finalizada com sucesso.",
+    failure: "Tarefa finalizada com erro.",
+    revoked: "Tarefa cancelada.",
+  };
+
+  var globalMessages = DEFAULT_MESSAGES;
+
+  /** Sobrescreve os textos padrão para todas as chamadas futuras de `init()`. */
+  function configure(options) {
+    if (options && options.messages) {
+      globalMessages = mergeMessages(options.messages);
+    }
+  }
+
+  function mergeMessages(overrides) {
+    var merged = {};
+    var key;
+    for (key in globalMessages) {
+      if (Object.prototype.hasOwnProperty.call(globalMessages, key)) {
+        merged[key] = globalMessages[key];
+      }
+    }
+    if (overrides) {
+      for (key in overrides) {
+        if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+          merged[key] = overrides[key];
+        }
+      }
+    }
+    return merged;
+  }
 
   function resolveConfig(el, options) {
     var endpoint = (options && options.endpoint) || el.getAttribute("data-poll-url");
@@ -35,21 +82,89 @@
     return { endpoint: endpoint, pollInterval: pollInterval };
   }
 
+  /** "125" -> "2min 05s" (compacto, pt-BR). */
+  function formatDuration(totalSeconds) {
+    totalSeconds = Math.max(0, Math.floor(totalSeconds));
+    var hours = Math.floor(totalSeconds / 3600);
+    var minutes = Math.floor((totalSeconds % 3600) / 60);
+    var seconds = totalSeconds % 60;
+    var parts = [];
+    if (hours) {
+      parts.push(hours + "h");
+    }
+    if (hours || minutes) {
+      parts.push(minutes + "min");
+    }
+    parts.push(seconds + "s");
+    return parts.join(" ");
+  }
+
+  /**
+   * Monta a frase de status a partir do payload JSON do endpoint de polling.
+   * Espelha (propositalmente com o mesmo texto padrão) a função
+   * `_compose_status_message` em `models.py`.
+   */
+  function composeMessage(data, messages) {
+    if (!data || !data.status) {
+      return messages.none;
+    }
+    if (data.status === "SUCCESS") {
+      return messages.success;
+    }
+    if (data.status === "FAILURE") {
+      return messages.failure;
+    }
+    if (data.status === "REVOKED") {
+      return messages.revoked;
+    }
+    if (!data.started_at) {
+      return messages.queued;
+    }
+    var elapsedSeconds = (Date.now() - new Date(data.started_at).getTime()) / 1000;
+    var message = messages.running.replace("{time}", formatDuration(elapsedSeconds));
+    if (data.progress && typeof data.progress.percent === "number") {
+      message += " " + messages.progress.replace("{percent}", data.progress.percent);
+    }
+    return message;
+  }
+
   function applyStatus(el, data) {
     if (!data || !data.status) {
       return;
     }
     el.setAttribute("data-status", data.status);
-    el.className = el.className.replace(/\btask-status-badge--[a-z]+\b/gi, "").trim();
-    el.classList.add("task-status-badge--" + data.status.toLowerCase());
+    el.className = el.className
+      .replace(/\btask-status-badge--[a-z]+\b/gi, "")
+      .replace(/\btask-status-panel--[a-z]+\b/gi, "")
+      .trim();
+    var statusClass = data.status.toLowerCase();
+    if (el.classList.contains("task-status-badge") || el.querySelector(".task-status-badge__label")) {
+      el.classList.add("task-status-badge--" + statusClass);
+    }
+    if (el.classList.contains("task-status-panel") || el.querySelector(".task-status-panel__message")) {
+      el.classList.add("task-status-panel--" + statusClass);
+    }
 
     var label = el.querySelector(".task-status-badge__label");
     if (label && data.status_display) {
       label.textContent = data.status_display;
     }
+
+    if (data.started_at) {
+      el.setAttribute("data-started-at", data.started_at);
+    } else {
+      el.removeAttribute("data-started-at");
+    }
   }
 
-  function runPoll(el, config, options) {
+  function renderMessage(el, data, messages) {
+    var messageEl = el.querySelector(".task-status-panel__message");
+    if (messageEl) {
+      messageEl.textContent = composeMessage(data, messages);
+    }
+  }
+
+  function runPoll(el, config, options, messages, entry) {
     if (!config.endpoint) {
       return;
     }
@@ -66,6 +181,8 @@
       })
       .then(function (data) {
         applyStatus(el, data);
+        renderMessage(el, data, messages);
+        entry.lastData = data;
         if (options && typeof options.onUpdate === "function") {
           options.onUpdate(data, el);
         }
@@ -104,17 +221,31 @@
     if (!config.endpoint) {
       return;
     }
+    var messages = mergeMessages(options && options.messages);
 
     el.setAttribute(ACTIVE_ATTR, "true");
-    runPoll(el, config, options);
-    var intervalId = global.setInterval(function () {
-      runPoll(el, config, options);
-    }, config.pollInterval);
+    var entry = { intervalId: null, tickId: null, lastData: null };
+    REGISTRY.set(el, entry);
 
-    REGISTRY.set(el, { intervalId: intervalId });
+    function poll() {
+      runPoll(el, config, options, messages, entry);
+    }
+    poll();
+    entry.intervalId = global.setInterval(poll, config.pollInterval);
+
+    // Painéis (com `.task-status-panel__message`) ganham um relógio local de
+    // 1s para o "há X tempo" andar suavemente entre um poll e outro, sem
+    // esperar o próximo `pollInterval` (que costuma ser bem maior que 1s).
+    if (el.querySelector(".task-status-panel__message")) {
+      entry.tickId = global.setInterval(function () {
+        if (entry.lastData && !entry.lastData.is_finished) {
+          renderMessage(el, entry.lastData, messages);
+        }
+      }, 1000);
+    }
   }
 
-  /** Para o polling de um elemento específico e libera o interval. */
+  /** Para o polling de um elemento específico e libera os intervals. */
   function stop(el) {
     el.removeAttribute(ACTIVE_ATTR);
     var entry = REGISTRY.get(el);
@@ -122,6 +253,9 @@
       return;
     }
     global.clearInterval(entry.intervalId);
+    if (entry.tickId) {
+      global.clearInterval(entry.tickId);
+    }
     REGISTRY.delete(el);
   }
 
@@ -133,7 +267,8 @@
   }
 
   // Observa remoções no DOM para limpar intervals automaticamente e evitar
-  // memory leaks quando um badge é removido (ex.: linha de changelist recarregada via ajax).
+  // memory leaks quando um badge/painel é removido (ex.: linha de changelist
+  // recarregada via ajax).
   function ensureCleanupObserver() {
     if (domObserver || typeof MutationObserver === "undefined") {
       return;
@@ -163,11 +298,14 @@
   /**
    * Inicia o polling para todos os elementos que casam com `selector`.
    *
-   * @param {string} selector - Seletor CSS dos badges a monitorar.
+   * @param {string} selector - Seletor CSS dos badges/painéis a monitorar.
    * @param {Object} [options]
    * @param {string} [options.endpoint] - URL de polling comum a todos os elementos
    *   (ignorado se o elemento já tiver `data-poll-url`).
    * @param {number} [options.pollInterval=5000] - Intervalo em ms.
+   * @param {Object} [options.messages] - Sobrescreve os textos padrão (pt-BR) usados
+   *   nos painéis — chaves: `none`, `queued`, `running` (usa `{time}`),
+   *   `progress` (usa `{percent}`), `success`, `failure`, `revoked`.
    * @param {function} [options.onUpdate] - Chamado a cada resposta recebida.
    * @param {function} [options.onSuccess] - Chamado quando a tarefa terminar com sucesso.
    * @param {function} [options.onError] - Chamado quando a tarefa falhar ou o fetch der erro.
@@ -192,12 +330,14 @@
     init: init,
     stop: stop,
     stopAll: stopAll,
+    configure: configure,
   };
 
   // Auto-inicialização: qualquer elemento com `data-poll-url` (renderizado
-  // pelo template `task_status_badge.html`) começa a ser monitorado assim que
-  // a página carrega, sem exigir um `<script>` de inicialização manual. Uma
-  // chamada manual a `TaskPoll.init(...)` feita antes deste evento (ex.: via
+  // pelos templates `task_status_badge.html`/`task_status_panel.html`)
+  // começa a ser monitorado assim que a página carrega, sem exigir um
+  // `<script>` de inicialização manual. Uma chamada manual a
+  // `TaskPoll.init(...)` feita antes deste evento (ex.: via
   // `{% task_poll_script %}`) continua tendo prioridade — elementos já
   // registrados não são reiniciados (ver `start()` acima).
   if (typeof document !== "undefined") {

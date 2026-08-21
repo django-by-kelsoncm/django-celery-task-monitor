@@ -191,6 +191,42 @@ class CeleryTaskMonitorMixin(_AdminBase):
             },
         )
 
+    def _render_task_status_panel(self, obj) -> str:
+        task_log = self._latest_task_log(obj)
+        if task_log is None:
+            return ""
+        # get_status_message() atualiza (e persiste) task_log.status como
+        # efeito colateral — precisa rodar antes de ler `.status` abaixo,
+        # senão a classe CSS do painel fica presa no valor cacheado antigo
+        # enquanto a mensagem já mostra o estado novo.
+        message = task_log.get_status_message()
+        return render_to_string(
+            "django_celery_task_monitor/task_status_panel.html",
+            {
+                "task_log": task_log,
+                "status": task_log.status,
+                "message": message,
+                "poll_url": self._get_task_status_url(task_log.task_id),
+                "poll_interval": self.get_celery_poll_interval(),
+            },
+        )
+
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        """Injeta ``task_log_panel_html`` no contexto do change form.
+
+        Diferente do badge do changelist (adicionado automaticamente via
+        ``list_display``), o painel do change form é opt-in: o template
+        ``change_form.html`` do seu ``ModelAdmin`` precisa referenciar
+        ``{{ task_log_panel_html }}`` onde quiser exibi-lo (ex.: logo após o
+        botão que dispara a tarefa). Isso evita que o plugin sobrescreva
+        globalmente o template de todo ``ModelAdmin`` do projeto host.
+        """
+        if obj is not None:
+            context["task_log_panel_html"] = self._render_task_status_panel(obj)
+        return super().render_change_form(
+            request, context, add=add, change=change, form_url=form_url, obj=obj
+        )
+
     def _url_name(self) -> str:
         opts = self.model._meta
         return f"{opts.app_label}_{opts.model_name}_celery_task_status"

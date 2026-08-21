@@ -66,3 +66,23 @@ persistem o ``TaskResult`` e o polling nunca sai de ``PENDING``:
 
    CELERY_TASK_ALWAYS_EAGER = True
    CELERY_TASK_STORE_EAGER_RESULT = True  # essencial para eager + monitor
+
+Também ative ``CELERY_TASK_TRACK_STARTED = True``. Sem isso, o Celery nunca
+registra o momento em que a execução começou (``TaskResult.date_started``
+fica ``null``), e o painel ao vivo do change form (ver :doc:`usage`) fica
+preso em "Tarefa enfileirada." mesmo com a tarefa já em execução:
+
+.. code-block:: python
+
+   CELERY_TASK_TRACK_STARTED = True
+
+.. important::
+   Em modo eager (``CELERY_TASK_ALWAYS_EAGER = True``), a tarefa roda de
+   forma **síncrona**, dentro da própria requisição HTTP que a disparou —
+   ela já terminou antes mesmo da página ser reenviada ao navegador. Ou
+   seja, mesmo com ``CELERY_TASK_TRACK_STARTED`` ativado, os estados
+   intermediários ("em processamento", progresso percentual) nunca chegam
+   a ser vistos via polling: o painel salta direto de "Tarefa enfileirada."
+   para o resultado final. Isso é esperado, não um bug — para ver a
+   progressão completa ao vivo, use um broker de verdade (Redis/RabbitMQ) e
+   rode um worker Celery separado (sem ``CELERY_TASK_ALWAYS_EAGER``).

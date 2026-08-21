@@ -7,21 +7,25 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='SandboxItem',
+            name="SandboxItem",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nome', models.CharField(max_length=255)),
-                ('processado', models.BooleanField(default=False)),
-                ('criado_em', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("nome", models.CharField(max_length=255)),
+                ("processado", models.BooleanField(default=False)),
+                ("criado_em", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'item de sandbox',
-                'verbose_name_plural': 'itens de sandbox',
+                "verbose_name": "item de sandbox",
+                "verbose_name_plural": "itens de sandbox",
             },
         ),
     ]

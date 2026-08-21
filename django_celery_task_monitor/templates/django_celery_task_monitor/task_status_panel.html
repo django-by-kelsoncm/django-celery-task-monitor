@@ -1,0 +1,8 @@
+{% load i18n %}
+<div class="task-status-panel task-status-panel--{{ status|default:"none"|lower }}"
+      {% if task_log %}data-task-id="{{ task_log.task_id }}"{% endif %}
+      {% if poll_url %}data-poll-url="{{ poll_url }}"{% endif %}
+      {% if poll_interval %}data-poll-interval="{{ poll_interval }}"{% endif %}
+      data-status="{{ status|default:"" }}">
+  <span class="task-status-panel__message">{% if message %}{{ message }}{% else %}{% translate "Nenhuma tarefa em andamento." %}{% endif %}</span>
+</div>

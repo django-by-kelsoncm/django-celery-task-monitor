@@ -79,6 +79,41 @@ no :doc:`projeto de exemplo <example-project>`):
      </div>
    {% endblock %}
 
+Mostrando o status ao vivo no change form
+=============================================
+
+A coluna do changelist já é ao vivo, mas o formulário de edição (a página
+para onde ``response_change`` redireciona) não ganha nenhum indicador
+sozinho — só a mensagem estática do Django (``self.message_user(...)``),
+que nunca muda depois de renderizada. Para um painel que também sonda o
+status e evolui em tempo real ("Tarefa enfileirada." → "Tarefa em
+processamento há 12s." → "Tarefa finalizada com sucesso."), referencie
+``{{ task_log_panel_html }}`` em algum lugar do seu ``change_form.html`` —
+esse HTML já vem pronto no contexto, injetado automaticamente por
+``CeleryTaskMonitorMixin.render_change_form()``:
+
+.. code-block:: html+django
+
+   {% extends "admin/change_form.html" %}
+
+   {% block field_sets %}
+     {{ task_log_panel_html }}
+     {{ block.super }}
+   {% endblock %}
+
+   {% block submit_buttons_bottom %}
+     {{ block.super }}
+     <div class="submit-row">
+       <input type="submit" value="Processar (assíncrono)" name="_processar-async" class="default">
+     </div>
+   {% endblock %}
+
+``task_log_panel_html`` só existe no contexto do *change* view (não do
+*add*, onde ainda não há objeto/``TaskLog`` nenhum) — em templates Django,
+referenciar uma variável de contexto ausente simplesmente renderiza vazio,
+então é seguro incluir o mesmo template em ambos. Detalhes de como a frase é
+composta (e como customizá-la) estão em :doc:`advanced` e :doc:`javascript`.
+
 Consultando todas as tarefas
 ===============================
 

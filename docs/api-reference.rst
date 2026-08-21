@@ -12,7 +12,10 @@ Referência da API
 Estados possíveis (``TaskLog.status``): ``PENDING``, ``STARTED``, ``RETRY``,
 ``SUCCESS``, ``FAILURE``, ``REVOKED`` — os mesmos nomes usados pelo Celery
 (``celery.states``), espelhados localmente para que este módulo não precise
-importar o pacote ``celery`` diretamente.
+importar o pacote ``celery`` diretamente. ``PROGRESS`` também é reconhecido
+(estado customizado comum para progresso percentual, ver :doc:`advanced`),
+mas qualquer outro nome de estado customizado também é aceito — o campo
+``status`` não é restrito aos valores acima.
 
 ``django_celery_task_monitor.admin``
 =======================================
@@ -52,7 +55,9 @@ Template tags (``{% load task_monitor_tags %}``)
    * - Tag
      - Descrição
    * - ``{% task_status_badge task_log %}``
-     - Renderiza o badge de status de um ``TaskLog``.
+     - Renderiza o badge de status (rótulo curto) de um ``TaskLog``.
+   * - ``{% task_status_panel task_log %}``
+     - Renderiza o painel de status ao vivo (frase completa) de um ``TaskLog``.
    * - ``{% task_poll_script selector %}``
      - Emite o ``<script>`` do plugin já com a inicialização do polling para ``selector``.
    * - ``{% task_monitor_static_url %}``
@@ -70,5 +75,7 @@ Templates
      - Uso
    * - ``django_celery_task_monitor/task_status_badge.html``
      - Badge de status usado no changelist, no ``TaskLogAdmin`` e na tag ``task_status_badge``.
+   * - ``django_celery_task_monitor/task_status_panel.html``
+     - Painel de status ao vivo, injetado no change form por ``CeleryTaskMonitorMixin.render_change_form()`` e usado pela tag ``task_status_panel``.
    * - ``django_celery_task_monitor/task_log_detail.html``
      - Bloco de detalhe de um ``TaskLog`` (status, metadados, erro), para uso livre em templates do projeto host.

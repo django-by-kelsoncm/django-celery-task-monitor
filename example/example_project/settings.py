@@ -95,6 +95,15 @@ CELERY_TASK_EAGER_PROPAGATES = False
 # Sem isso, tarefas eager não persistem o TaskResult no backend, e o polling
 # do django_celery_task_monitor nunca veria o status mudar de PENDING.
 CELERY_TASK_STORE_EAGER_RESULT = True
+# Sem isso, o Celery nunca registra STARTED (nem TaskResult.date_started),
+# então o painel ao vivo do plugin ficaria preso em "Tarefa enfileirada."
+# mesmo com a tarefa já em execução. Note que, em modo eager, a tarefa roda
+# de forma síncrona dentro da própria requisição que a disparou — então o
+# navegador só chega a fazer polling DEPOIS que ela já terminou, e os
+# estados intermediários não ficam visíveis mesmo com esta flag ativada
+# (para ver a progressão completa ao vivo, use um broker de verdade e um
+# worker Celery rodando à parte, sem CELERY_TASK_ALWAYS_EAGER).
+CELERY_TASK_TRACK_STARTED = True
 
 # --- django_celery_task_monitor ---------------------------------------------
 CELERY_TASK_MONITOR_POLL_INTERVAL = 3000

@@ -37,6 +37,38 @@ def task_status_badge(
     }
 
 
+@register.inclusion_tag("django_celery_task_monitor/task_status_panel.html")
+def task_status_panel(
+    task_log: TaskLog, poll_url: Optional[str] = None, poll_interval: Optional[int] = None
+):
+    """Renderiza o painel de status ao vivo de um :class:`TaskLog`.
+
+    Diferente de ``task_status_badge`` (rótulo curto, para colunas de
+    changelist), o painel mostra a frase completa — "Tarefa enfileirada.",
+    "Tarefa em processamento há 12s.", "Tarefa finalizada com sucesso." etc.
+    — e é o que ``CeleryTaskMonitorMixin`` injeta automaticamente como
+    ``task_log_panel_html`` no contexto do change form. Use esta tag quando
+    quiser o mesmo painel em outro lugar (fora do admin, ou para um
+    ``TaskLog`` obtido de outra forma).
+
+    Exemplo::
+
+        {% load task_monitor_tags %}
+        {% task_status_panel my_task_log %}
+    """
+    # get_status_message() atualiza (e persiste) task_log.status como efeito
+    # colateral — precisa rodar antes de ler `.status` abaixo, senão a
+    # classe CSS do painel fica presa no valor cacheado antigo.
+    message = task_log.get_status_message() if task_log else None
+    return {
+        "task_log": task_log,
+        "status": task_log.status if task_log else None,
+        "message": message,
+        "poll_url": poll_url,
+        "poll_interval": poll_interval or app_settings.DEFAULT_POLL_INTERVAL,
+    }
+
+
 @register.simple_tag
 def task_monitor_static_url() -> str:
     """Retorna a URL estática do arquivo ``task-poll.js`` do plugin."""

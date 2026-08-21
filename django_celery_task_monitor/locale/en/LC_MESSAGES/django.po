@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: django-celery-task-monitor 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-21 09:52-0300\n"
+"POT-Creation-Date: 2026-08-21 11:17-0300\n"
 "PO-Revision-Date: 2026-08-21 09:51-0300\n"
 "Last-Translator: Kelson C. Medeiros <kelsoncm@gmail.com>\n"
 "Language-Team: English\n"
@@ -37,6 +37,9 @@ msgstr "Running"
 msgid "Repetindo"
 msgstr "Retrying"
 
+msgid "Em processamento"
+msgstr "In progress"
+
 msgid "Concluída"
 msgstr "Succeeded"
 
@@ -45,6 +48,26 @@ msgstr "Failed"
 
 msgid "Revogada"
 msgstr "Revoked"
+
+msgid "Tarefa finalizada com sucesso."
+msgstr "Task finished successfully."
+
+msgid "Tarefa finalizada com erro."
+msgstr "Task finished with an error."
+
+msgid "Tarefa cancelada."
+msgstr "Task cancelled."
+
+msgid "Tarefa enfileirada."
+msgstr "Task queued."
+
+#, python-format
+msgid "Tarefa em processamento há %(time)s."
+msgstr "Task running for %(time)s."
+
+#, python-format
+msgid "Processamento em %(percent)s%%."
+msgstr "Progress: %(percent)s%%."
 
 msgid "tipo de conteúdo"
 msgstr "content type"
@@ -94,4 +117,9 @@ msgid "Atualizada em"
 msgstr "Updated at"
 
 msgid "Nenhuma tarefa"
+msgstr "No task"
+
+#, fuzzy
+#| msgid "Nenhuma tarefa"
+msgid "Nenhuma tarefa em andamento."
 msgstr "No task"

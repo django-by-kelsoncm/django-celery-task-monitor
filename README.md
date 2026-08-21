@@ -76,6 +76,15 @@ A permissão `view_task_trace` é criada automaticamente pela migração do
 plugin. Conceda-a a quem deve ver stacktraces completos (via admin de
 `Usuários`/`Grupos`, ou por script/data migration no seu projeto).
 
+Para o painel de status ao vivo do change form (ver "Uso básico" abaixo)
+mostrar quando a tarefa realmente começou a rodar — e não ficar preso em
+"Tarefa enfileirada." — ative também, na configuração do Celery do seu
+projeto:
+
+```python
+CELERY_TASK_TRACK_STARTED = True
+```
+
 ## Uso básico
 
 ```python
@@ -119,6 +128,24 @@ nenhum JavaScript extra para escrever. Para o botão "Processar (assíncrono)"
 aparecer no formulário, adicione um `submit_buttons_bottom` customizado (veja
 `example/example_app/templates/admin/example_app/relatorio/change_form.html`
 no projeto de exemplo).
+
+**Importante:** o changelist ganha o badge automaticamente, mas o *change
+form* (a página para onde `response_change` redireciona) não ganha nenhum
+indicador ao vivo sozinho — só a mensagem estática de
+`self.message_user(...)`, que nunca muda depois de renderizada. Se você
+quiser um painel que também evolua em tempo real ali ("Tarefa enfileirada."
+→ "Tarefa em processamento há 12s." → "Tarefa finalizada com sucesso."),
+referencie `{{ task_log_panel_html }}` no seu `change_form.html` — o mixin
+já injeta esse HTML pronto no contexto:
+
+```html
+{% extends "admin/change_form.html" %}
+
+{% block field_sets %}
+  {{ task_log_panel_html }}
+  {{ block.super }}
+{% endblock %}
+```
 
 ## Uso avançado
 
@@ -196,6 +223,12 @@ todos. Intervals são limpos automaticamente quando o elemento é removido do
 DOM (via `MutationObserver`) e quando a tarefa atinge um estado final
 (`SUCCESS`, `FAILURE` ou `REVOKED`).
 
+Elementos com um `.task-status-panel__message` interno (renderizados por
+`task_status_panel.html`) ganham a frase completa de status, recomposta a
+cada poll e a cada segundo no cliente (relógio de "há X tempo"). Os textos
+padrão (pt-BR) são customizáveis via `TaskPoll.configure({messages: {...}})`
+ou por chamada via `options.messages` — veja `docs/javascript.rst`.
+
 ## Referência da API
 
 ### `django_celery_task_monitor.models.TaskLog`
@@ -205,13 +238,15 @@ DOM (via `MutationObserver`) e quando a tarefa atinge um estado final
 | `content_type`, `object_id`, `content_object` | Vínculo genérico com qualquer modelo. |
 | `task_id` | ID da tarefa Celery (único). |
 | `task_name` | Nome da tarefa (informativo). |
-| `status` | Status cacheado (`PENDING`, `STARTED`, `RETRY`, `SUCCESS`, `FAILURE`, `REVOKED`). |
+| `status` | Status cacheado (`PENDING`, `STARTED`, `RETRY`, `PROGRESS`, `SUCCESS`, `FAILURE`, `REVOKED`, ou qualquer estado customizado). |
 | `started_by` | Usuário que disparou a tarefa (opcional). |
 | `update_status()` | Sincroniza `status` com o `TaskResult` mais recente. |
 | `is_finished` | `True` se o status é terminal. |
+| `get_progress()` | Dict de progresso (`{"percent": ...}`) publicado via `self.update_state(state=..., meta=...)`, ou `None`. |
+| `get_status_message()` | Frase de status legível (ex.: `"Tarefa em processamento há 12s."`). |
 | `get_error_details(user)` | `{"message": ..., "traceback": ...}`, respeitando a permissão de `user`. |
 | `get_traceback()` | Stacktrace bruto, sem checar permissão (uso interno). |
-| `as_status_payload(user)` | Payload JSON usado pelo endpoint de polling. |
+| `as_status_payload(user)` | Payload JSON usado pelo endpoint de polling (inclui `message`, `started_at`, `progress`). |
 
 ### `django_celery_task_monitor.admin.CeleryTaskMonitorMixin`
 
@@ -222,6 +257,7 @@ DOM (via `MutationObserver`) e quando a tarefa atinge um estado final
 | `task_status_column(obj)` | Método de exibição padrão para `list_display`. |
 | `get_celery_poll_interval()` | Intervalo efetivo (considerando o default global). |
 | `get_urls()` | Registra a rota REST de polling (`admin:<app>_<model>_celery_task_status`). |
+| `render_change_form(...)` | Injeta `task_log_panel_html` (painel ao vivo pronto) no contexto do change form. |
 
 ### `django_celery_task_monitor.admin.TaskLogAdmin`
 
@@ -234,7 +270,8 @@ quem não tem a permissão `view_task_trace`.
 
 | Tag | Descrição |
 | --- | --- |
-| `{% task_status_badge task_log %}` | Renderiza o badge de status. |
+| `{% task_status_badge task_log %}` | Renderiza o badge de status (rótulo curto). |
+| `{% task_status_panel task_log %}` | Renderiza o painel de status ao vivo (frase completa). |
 | `{% task_poll_script selector %}` | `<script>` do plugin + inicialização do polling para `selector`. |
 | `{% task_monitor_static_url %}` | URL estática de `task-poll.js`. |
 | `{% task_monitor_static_css_url %}` | URL estática do CSS opcional do badge. |
@@ -268,14 +305,14 @@ worker/broker) — veja `example/example_project/settings.py`.
 
 **Como mostrar uma barra de progresso, em vez de só um badge de status?**
 
-Adicione um campo de progresso (ex.: `progress_percent`) ao seu próprio
-modelo (ou a um modelo relacionado) e atualize-o dentro da sua tarefa Celery
-via `self.update_state(state="PROGRESS", meta={"percent": 42})`. No template
-do badge (customize `task_status_badge.html` no seu projeto, sobrescrevendo o
-template do plugin, ou use `TaskPoll`'s `onUpdate` callback) leia
-`data.meta.percent` (o payload de status inclui o que o `TaskResult` guardou)
-e renderize sua própria `<progress>`/barra. O plugin não impõe um formato de
-barra de progresso porque isso é altamente específico de cada projeto.
+O plugin já lê progresso percentual nativamente: dentro da sua tarefa Celery
+(com `bind=True`), chame `self.update_state(state="PROGRESS", meta={"percent": 42})`.
+`TaskLog.get_progress()` decodifica isso, e tanto o payload JSON do endpoint
+de polling (`progress.percent`) quanto a frase pronta do painel ao vivo
+(`"Processamento em 42%."`) já refletem automaticamente — sem customização
+necessária para o texto. Para uma barra visual em vez de só texto, use o
+callback `onUpdate` de `TaskPoll.init()` para ler `data.progress.percent` a
+cada poll e atualizar sua própria UI.
 
 **Como integrar com Django-RQ (ou outra fila) em vez de Celery?**
 

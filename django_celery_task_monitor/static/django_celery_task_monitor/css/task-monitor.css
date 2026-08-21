@@ -30,12 +30,14 @@
 }
 
 .task-status-badge--started,
-.task-status-badge--retry {
+.task-status-badge--retry,
+.task-status-badge--progress {
   background: #dbeafe;
   color: #1d4ed8;
 }
 
-.task-status-badge--started .task-status-badge__dot {
+.task-status-badge--started .task-status-badge__dot,
+.task-status-badge--progress .task-status-badge__dot {
   animation: task-status-pulse 1.2s ease-in-out infinite;
 }
 
@@ -62,6 +64,38 @@
 @keyframes task-status-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
+}
+
+.task-status-panel {
+  display: block;
+  padding: 0.6em 0.9em;
+  margin-bottom: 1em;
+  border-radius: 0.35em;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 0.9em;
+}
+
+.task-status-panel--started,
+.task-status-panel--retry,
+.task-status-panel--progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.task-status-panel--success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.task-status-panel--failure {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-status-panel--revoked {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .task-log-detail__traceback {
