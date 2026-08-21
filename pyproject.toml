@@ -73,18 +73,21 @@ plugins = ["mypy_django_plugin.main"]
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true
-exclude = ["example/", "docs/"]
+exclude = ["example/", "docs/", "django_celery_task_monitor/tests\\.py"]
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
-python_files = ["test_*.py"]
-testpaths = ["tests"]
+python_files = ["tests.py"]
+testpaths = ["django_celery_task_monitor"]
 # Sem isso, `pytest` (o script) não coloca a raiz do repo no sys.path (ao
 # contrário de `python -m pytest`, que insere o cwd automaticamente), e
-# `import tests.settings` falha com "No module named 'tests'".
+# `import tests.settings` falha com "No module named 'tests'". conftest.py
+# está na raiz do repo (não em tests/) porque pytest só carrega conftest.py
+# de diretórios ancestrais do arquivo de teste — e o teste agora vive em
+# django_celery_task_monitor/tests.py, não mais em tests/.
 pythonpath = ["."]
 # Cobertura embutida em qualquer `pytest` (não só no CI): o limite de 100%
 # vem de [tool.coverage.report].fail_under, que o pytest-cov já respeita
@@ -93,7 +96,7 @@ addopts = "--cov=django_celery_task_monitor --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["django_celery_task_monitor"]
-omit = ["*/migrations/*"]
+omit = ["*/migrations/*", "django_celery_task_monitor/tests.py"]
 
 [tool.coverage.report]
 fail_under = 100
